@@ -1,0 +1,156 @@
+# Ghostwolf Systems — GRIM Android
+
+Android client for Ghostwolf Systems, styled around the GRIM flagship identity and connected to the OmegaVault desktop bridge.
+
+Created and owned by GhostwolfArt.
+
+## Purpose
+
+Bring the Action Stream, reviewed notification capture, tactical chat, and defensive integrity controls into one Android interface.
+
+All security components are intended for protection, containment, and recovery.
+
+## Android Baseline
+
+- Native Java / Gradle
+- Minimum SDK: 26 — Android 8.0
+- Target SDK: 34 — Android 14
+- Compile SDK: 35
+- JDK: 17
+- Gradle: 8.11.1
+
+## Desktop Bridge
+
+Default connection:
+
+https://10.0.0.122:8443
+
+The phone must be able to reach the desktop node.
+HTTPS certificate and hostname verification remain enabled.
+
+### API Routes
+
+| Route | Purpose |
+| --- | --- |
+| GET /api/status | Connection and pairing status |
+| GET /api/challenge | Fetch a signing challenge |
+| POST /api/pair | Enroll the phone's public key |
+| GET /api/security/telemetry | Desktop defense telemetry |
+| GET /api/inbox/feed | Load Action Stream cards |
+| POST /api/inbox/ingest | Submit reviewed text |
+| POST /api/inbox/commit | Commit an action |
+| POST /api/inbox/purge | Remove an action |
+| POST /api/omega/chat | Request a tactical chat response |
+
+The currently inspected chat handler returns JSON.
+Streaming support requires backend integration.
+
+## Device Identity
+
+The client generates a P-256 signing key in Android Keystore.
+
+- Private phone keys remain on the phone.
+- Only public key material is submitted during pairing.
+- Challenges are signed using ECDSA with SHA-256.
+- The client checks for hardware-backed key storage.
+- Pairing requires explicit confirmation.
+
+Server-side signature enforcement, replay prevention,
+Creator enrollment, and hardware attestation verification
+must be validated before production use.
+
+## Adaptive Defense Matrix
+
+1. Nominal operation and periodic integrity checks.
+2. Guard mode with throttling and deeper inspection.
+3. Flood detection and request admission limits.
+4. Bridge severance and service containment.
+5. Quarantine, authenticated recovery, and biometric unseal.
+
+The Android project currently contains the policy core.
+Runtime enforcement adapters remain under development.
+
+Phone, desktop service, and host firewall controls have
+distinct responsibilities. A normal Android app does not
+provide unrestricted device-wide firewall or memory access.
+
+## Visual Identity
+
+Based on the GRIM flagship design:
+
+- Near-black backgrounds
+- Teal accents: #1AA1A3
+- White headings: #F3F7F7
+- Muted supporting text
+- Clear action cards and restrained status indicators
+
+Brand reference: https://www.ghostwolfart.com/
+
+## Current Status
+
+Implemented in the local Android foundation:
+
+- Action Stream views
+- Reviewed text ingestion
+- Commit and purge controls
+- JSON chat integration
+- Notification listener with explicit Android access grant
+- Scoped public-certificate trust
+- Keystore challenge-signing client
+- Five-level defense policy core
+
+Validation completed:
+
+- Java sources compile against Android API 35.
+- Standalone defense-policy checks pass.
+- Certificate-validated desktop status and feed reads succeed.
+
+Pending:
+
+- Successful APK assembly and Android lint
+- Device testing and hardware pairing
+- Backend authentication enforcement fixes
+- On-device urgency and deadline parsing
+- Encrypted local memory and authenticated commit receipts
+- Biometric recovery and durable quarantine
+- Runtime defense integration
+- Model inference and phone-service integration
+
+Windows APK assembly currently encounters an AAPT2
+resource-linking crash. An Ubuntu CI build is the next
+build path to validate.
+
+## Build
+
+After the Android source and Gradle wrapper are added:
+
+1. Install JDK 17.
+2. Install Android SDK Platform 35 and Build Tools 35.0.0.
+3. Configure JAVA_HOME and ANDROID_HOME.
+4. Run:
+
+Windows:
+    gradlew.bat assembleDebug lintDebug
+
+Linux:
+    bash gradlew assembleDebug lintDebug
+
+## Repository Hygiene
+
+Never commit:
+
+- Private keys
+- Production credentials
+- Signing keystores or passwords
+- Personal notification contents
+- Private vault data
+- Local SDK paths or build caches
+
+Public certificates may be included when required for
+the intended deployment.
+
+## Ownership
+
+GhostwolfArt / Ghostwolf Systems.
+
+No open-source license is granted by this README.
