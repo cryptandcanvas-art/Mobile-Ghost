@@ -19,10 +19,12 @@ public final class MainActivity extends Activity {
     private ImageView radar;
     private DeviceIdentity identity;
     private boolean busy;
+    private int appearance;
     private final Button[] navButtons=new Button[3];
     private String baseSnapshot, captureSnapshot, promptSnapshot;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        appearance=getPreferences(MODE_PRIVATE).getInt("appearance_mode",0)==1?1:0;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         getWindow().setStatusBarColor(BG); getWindow().setNavigationBarColor(BG);
         root=column(); root.setBackgroundColor(BG); root.setPadding(dp(20),dp(12),dp(20),dp(12));
@@ -40,13 +42,13 @@ public final class MainActivity extends Activity {
         LinearLayout nav=row(); nav.setPadding(0,dp(12),0,0); root.addView(nav);
         String[] names={"STREAM","BRAIN","SETTINGS"};
         for(int i=0;i<names.length;i++){ final int index=i; Button b=button(names[i],false,()->select(index)); b.setTextSize(11); navButtons[i]=b; nav.addView(b,weighted()); }
-        select(0);
+        select(0);applyAppearance(root);
     }
     private void buildStream(){
         TextView eyebrow=label("YOUR EXECUTIVE INTERFACE",10,MUTED); eyebrow.setLetterSpacing(.18f); stream.addView(eyebrow);
         stream.addView(label("Little Omega",32,WHITE));
         stream.addView(label("Clarity. Control. Continuity.",14,MUTED));
-        OrbitView orbit=new OrbitView(); stream.addView(orbit,new LinearLayout.LayoutParams(-1,dp(182)));
+        OrbitView orbit=new OrbitView();orbit.setTag(R.id.appearance_role,"orbit");stream.addView(orbit,new LinearLayout.LayoutParams(-1,dp(182)));
         LinearLayout metrics=row(); stream.addView(metrics);
         LinearLayout left=panel(); metrics.addView(left,weighted()); left.addView(label("ACTION BUFFER",10,MUTED)); count=label("—",28,WHITE); left.addView(count);
         LinearLayout right=panel(); LinearLayout.LayoutParams rp=weighted(); rp.leftMargin=dp(10); metrics.addView(right,rp);
@@ -79,6 +81,12 @@ public final class MainActivity extends Activity {
     }
     private void buildSettings(){
         settings.addView(label("DEVICE & CONNECTION",10,TEAL)); settings.addView(label("Control center",30,WHITE));
+        LinearLayout appearancePanel=panel();marginTop(settings,appearancePanel,20);appearancePanel.addView(label("APPEARANCE",11,TEAL));
+        RadioGroup modes=new RadioGroup(this);modes.setOrientation(RadioGroup.VERTICAL);
+        String[] modeNames={"Sovereign Cards — clean & quiet","Tactical Cockpit — orbital dashboard"};
+        for(int i=0;i<modeNames.length;i++){RadioButton option=new RadioButton(this);option.setId(View.generateViewId());option.setText(modeNames[i]);option.setTextColor(WHITE);option.setTextSize(14);option.setMinHeight(dp(48));option.setTag(i);modes.addView(option);if(i==appearance)modes.check(option.getId());}
+        modes.setOnCheckedChangeListener((group,id)->{View option=group.findViewById(id);if(option!=null){appearance=(Integer)option.getTag();getPreferences(MODE_PRIVATE).edit().putInt("appearance_mode",appearance).apply();applyAppearance(root);}});
+        appearancePanel.addView(modes);appearancePanel.addView(label("Your choice is saved on this phone.",12,MUTED));
         LinearLayout connection=panel(); marginTop(settings,connection,20); connection.addView(label("DESKTOP NODE",11,TEAL));
         endpoint=field("HTTPS service URL",1); endpoint.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI); endpoint.setText("https://10.0.0.122:8443"); connection.addView(endpoint);
         connection.addView(button("Check link & sentry",true,this::refresh));
@@ -88,7 +96,7 @@ public final class MainActivity extends Activity {
         device.addView(button("Android notification settings",false,()->startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))));
         LinearLayout identityPanel=panel(); marginTop(settings,identityPanel,16); identityPanel.addView(label("CREATOR",11,TEAL)); identityPanel.addView(label("GhostwolfArt",22,WHITE)); identityPanel.addView(label("Ghostwolf Systems",14,MUTED));
         identityPanel.addView(label("Public owner identity · biometric unlock integration pending",11,MUTED));
-        settings.addView(label("Little Omega 0.2  /  Native Android",11,MUTED));
+        settings.addView(label("Little Omega 0.3  /  Native Android",11,MUTED));
     }
     private void refresh(){ if(busy)return; defense.setText("CHECKING");defense.setTextColor(MUTED);radar.setColorFilter(MUTED); execute(()->{
         JSONObject feed=new JSONObject(client().request("/api/inbox/feed",null));
@@ -114,17 +122,18 @@ public final class MainActivity extends Activity {
     private void addCard(JSONObject item){
         LinearLayout card=panel(); marginTop(cards,card,10);
         String id=item.optString("id"); card.setTag(id);
-        LinearLayout top=row(); card.addView(top); String priority=item.optString("priority_label").replace("PRIORITY ","");
+        LinearLayout top=row();top.setTag(R.id.appearance_role,"taskHeader");card.addView(top); String priority=item.optString("priority_label").replace("PRIORITY ","");
         int accent=item.optDouble("score")>=9?0xffffd08a:TEAL;
         TextView chip=label(priority,10,accent); chip.setLetterSpacing(.08f); top.addView(chip,weighted()); top.addView(label(String.format(java.util.Locale.ROOT,"%.1f / 10",item.optDouble("score")),16,WHITE));
-        TextView task=label(item.optString("text"),18,WHITE); task.setPadding(0,dp(14),0,dp(10));card.addView(task);
-        card.addView(label(item.optString("origin"),10,MUTED)); card.addView(label(item.optString("meta"),11,MUTED));
+        TextView task=label(item.optString("text"),18,WHITE);task.setTypeface(Typeface.DEFAULT,Typeface.BOLD);task.setTag(R.id.appearance_role,"taskTitle");task.setPadding(0,dp(14),0,dp(10));card.addView(task);
+        TextView subtitle=label(priority+" · "+String.format(java.util.Locale.ROOT,"%.1f / 10",item.optDouble("score"))+"\n"+item.optString("origin")+"\n"+item.optString("meta"),13,MUTED);subtitle.setTag(R.id.appearance_role,"taskSubtitle");card.addView(subtitle);
         LinearLayout actions=row();actions.setPadding(0,dp(10),0,0);card.addView(actions);
         for(String action:new String[]{"commit","purge"})actions.addView(button(action.equals("commit")?"COMMIT":"PURGE",action.equals("commit"),()->new AlertDialog.Builder(this).setTitle(action.equals("commit")?"Commit this action?":"Purge this action?").setMessage(item.optString("text")).setNegativeButton("Cancel",null).setPositiveButton("Confirm",(d,w)->execute(()->{
             JSONObject result=new JSONObject(client().request("/api/inbox/"+action,new JSONObject().put("id",id)));
             if(!(action.equals("commit")?"COMMITTED":"PURGED").equals(result.getString("status")))throw new java.io.IOException("Action was not confirmed.");
             ui(()->{cards.removeView(card);updateCount();if(cards.getChildCount()==0)showEmpty();});
         },action.equals("commit")?"Action committed":"Action purged")).show()),weighted());
+        applyAppearance(card);
     }
     private void updateCount(){int n=0;for(int i=0;i<cards.getChildCount();i++)if(cards.getChildAt(i).getTag()!=null)n++;count.setText(Integer.toString(n));}
     private void showEmpty(){empty=label("Your stream is clear.\nRefresh to load actions or capture one below.",14,MUTED);empty.setGravity(Gravity.CENTER);empty.setPadding(dp(16),dp(24),dp(16),dp(24));cards.addView(empty);}
@@ -147,7 +156,15 @@ public final class MainActivity extends Activity {
     private LinearLayout row(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.HORIZONTAL);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
     private LinearLayout.LayoutParams weighted(){return new LinearLayout.LayoutParams(0,-2,1);}
     private GradientDrawable surface(int color,int stroke){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(16));d.setStroke(dp(1),stroke);return d;}
-    private LinearLayout panel(){LinearLayout v=column();v.setPadding(dp(16),dp(16),dp(16),dp(16));v.setBackground(surface(PANEL,LINE));return v;}
+    private LinearLayout panel(){LinearLayout v=column();v.setTag(R.id.appearance_role,"panel");v.setPadding(dp(16),dp(16),dp(16),dp(16));v.setBackground(surface(PANEL,LINE));return v;}
+    private void applyAppearance(View view){Object role=view.getTag(R.id.appearance_role);boolean quiet=appearance==0;
+        if("orbit".equals(role))view.setVisibility(quiet?View.GONE:View.VISIBLE);
+        if("taskHeader".equals(role))view.setVisibility(quiet?View.GONE:View.VISIBLE);
+        if("panel".equals(role)){int pad=dp(quiet?20:16);view.setPadding(pad,pad,pad,pad);view.setBackground(surface(quiet?0xff11171b:PANEL,quiet?0xff263137:LINE));}
+        if("taskTitle".equals(role)){((TextView)view).setTextSize(quiet?16:18);view.setPadding(0,dp(quiet?0:14),0,dp(quiet?4:10));}
+        if("taskSubtitle".equals(role)){((TextView)view).setTextColor(quiet?0x99ffffff:MUTED);((TextView)view).setTextSize(13);}
+        if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)applyAppearance(group.getChildAt(i));}
+    }
     private void marginTop(LinearLayout parent,View view,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(top);parent.addView(view,p);}
     private TextView label(String text,int size,int color){TextView v=new TextView(this);v.setText(text);v.setTextSize(size);v.setTextColor(color);v.setPadding(dp(2),dp(3),dp(2),dp(3));if(size>=20)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return v;}
     private EditText field(String hint,int lines){EditText v=new EditText(this);v.setHint(hint);v.setTextColor(WHITE);v.setHintTextColor(MUTED);v.setTextSize(15);v.setMinLines(lines);v.setGravity(Gravity.TOP);v.setPadding(dp(12),dp(12),dp(12),dp(12));v.setBackground(surface(BG,LINE));v.setSaveEnabled(false);v.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);return v;}
