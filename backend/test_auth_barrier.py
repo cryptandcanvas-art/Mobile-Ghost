@@ -150,6 +150,17 @@ class AuthTests(unittest.TestCase):
             bridge.INBOX_ENGINE.parse_and_ingest.assert_not_called()
             bridge.INBOX_ENGINE.commit.assert_not_called()
             bridge.INBOX_ENGINE.purge.assert_not_called()
+            # Archive must not include private keys, vault data or Python dependencies.
+            cert_dir = Path(directory) / 'certs'; cert_dir.mkdir()
+            (cert_dir / 'key.pem').write_text('TEST PRIVATE KEY MATERIAL')
+            (cert_dir / 'cert.pem').write_text('TEST PUBLIC CERTIFICATE')
+            (Path(directory) / 'vault_data' / 'private.json').write_text('{"private":true}')
+            bridge.build_suite_zip()
+            import zipfile
+            with zipfile.ZipFile(bridge.PACKAGE_ZIP) as archive:
+                names = archive.namelist()
+                self.assertTrue(any(name.endswith('certs/cert.pem') for name in names))
+                self.assertFalse(any('key.pem' in name or 'vault_data' in name for name in names))
             for route in ('/auth/challenge', '/api/v1/auth/challenge'):
                 handler = bridge.MobileVaultHandler.__new__(bridge.MobileVaultHandler)
                 handler.command, handler.path, handler.client_address = 'GET', route, ('127.0.0.1', 1234)

@@ -474,13 +474,16 @@ SENTRY = EgressSentry() if EgressSentry else None
 def build_suite_zip():
     try:
         with zipfile.ZipFile(PACKAGE_ZIP, "w", zipfile.ZIP_DEFLATED) as z:
-            for root, _, files in os.walk(BASE_DIR):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, BASE_DIR)
-                    if rel_path.startswith("vault_data") or rel_path.endswith(".zip"):
-                        continue
-                    z.write(full_path, arcname=os.path.join("Ghostwolf_Pocket_Omega_Vault", rel_path))
+            # Explicit distribution boundary: never recurse through vault data, cert keys or dependencies.
+            allowed = ["vault_service.py", "auth_barrier.py", "requirements.txt", "certs/cert.pem"]
+            for root, _, files in os.walk(STATIC_DIR, followlinks=False):
+                for name in files:
+                    if os.path.splitext(name)[1].lower() in (".html", ".css", ".js", ".svg", ".png", ".jpg", ".webp", ".woff", ".woff2"):
+                        allowed.append(os.path.relpath(os.path.join(root, name), BASE_DIR))
+            for relative in allowed:
+                path = os.path.join(BASE_DIR, relative)
+                if os.path.isfile(path) and os.path.commonpath((os.path.realpath(BASE_DIR), os.path.realpath(path))) == os.path.realpath(BASE_DIR):
+                    z.write(path, arcname=os.path.join("Ghostwolf_Pocket_Omega_Vault", relative))
     except Exception as e:
         sys.stderr.write(f"[ZIP_ERROR] Could not build package: {e}\n")
 
