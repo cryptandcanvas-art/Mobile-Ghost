@@ -41,8 +41,11 @@ final class DeviceIdentity {
     private static String encode(byte[] bytes) { return Base64.encodeToString(bytes, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP); }
     String sign(String challenge) throws Exception {
         if (!challenge.matches("[0-9a-fA-F]{64}")) throw new GeneralSecurityException("Invalid challenge format.");
+        return signMessage(challenge);
+    }
+    String signMessage(String message) throws Exception {
         Signature signer = Signature.getInstance("SHA256withECDSA"); signer.initSign(privateKey);
-        signer.update(challenge.getBytes(StandardCharsets.UTF_8));
+        signer.update(message.getBytes(StandardCharsets.UTF_8));
         byte[] der = signer.sign();
         // P-256 DER sequence fits short-form lengths; convert to the server's 64-byte P1363 format.
         if (der.length < 8 || der[0] != 0x30 || (der[1] & 255) != der.length - 2 || der[2] != 2) throw new GeneralSecurityException("Invalid ECDSA encoding.");

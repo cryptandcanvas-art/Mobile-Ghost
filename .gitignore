@@ -3,3 +3,9 @@ local.properties
 **/build/
 *.jks
 *.keystore
+**/__pycache__/
+*.pyc
+vault_data/
+backend/vault_data/
+backend/static/
+backend/certs/

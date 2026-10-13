@@ -65,26 +65,43 @@ final class ApiClient {
         } finally { connection.disconnect(); }
     }
     private HttpURLConnection connect(String route, JSONObject body, String accept) throws Exception {
+        if (!route.startsWith("/") || route.contains("\n") || route.contains("\r")) throw new IllegalArgumentException("Invalid API route.");
+        byte[] bodyBytes = body == null ? new byte[0] : body.toString().getBytes(StandardCharsets.UTF_8);
         JSONObject challenge = null;
-        if (!route.equals("/api/challenge") && !route.equals("/api/pair")) {
+        if (!route.equals("/auth/challenge") && !route.equals("/api/challenge") && !route.equals("/api/pair")) {
             if (identity == null) throw new IllegalStateException("Device identity unavailable.");
-            challenge = new JSONObject(request("/api/challenge", null));
+            challenge = new JSONObject(request("/auth/challenge", null));
+            if (!"GW_REQUEST_V2".equals(challenge.getString("protocol")) || !"ECDSA_P256_SHA256_P1363".equals(challenge.getString("algorithm")))
+                throw new IOException("Unsupported authentication protocol.");
         }
         HttpURLConnection c = (HttpURLConnection) new URL(base + route).openConnection();
         c.setInstanceFollowRedirects(false);
         c.setConnectTimeout(15000); c.setReadTimeout(30000);
         c.setRequestProperty("Accept", accept);
+        if (route.equals("/auth/challenge")) {
+            if (identity == null) throw new IllegalStateException("Device identity unavailable.");
+            c.setRequestProperty("X-Key-ID", identity.fingerprint);
+        }
         if (challenge != null) {
-            c.setRequestProperty("X-Device-Fingerprint", identity.fingerprint);
-            c.setRequestProperty("X-Challenge", challenge.getString("challenge"));
-            c.setRequestProperty("X-Signature", identity.sign(challenge.getString("challenge")));
+            String nonce = challenge.getString("nonce");
+            if (!nonce.matches("[0-9a-f]{64}")) throw new IOException("Invalid authentication nonce.");
+            String timestamp = Long.toString(challenge.getLong("issuedAt"));
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(bodyBytes);
+            StringBuilder hex = new StringBuilder();
+            for (byte value : hash) hex.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+            String method = body == null ? "GET" : "POST";
+            String target = new URL(base + route).getFile();
+            String canonical = method + "\n" + target + "\n" + timestamp + "\n" + nonce + "\n" + hex;
+            c.setRequestProperty("X-Key-ID", identity.fingerprint);
+            c.setRequestProperty("X-Auth-Nonce", nonce);
+            c.setRequestProperty("X-Auth-Timestamp", timestamp);
+            c.setRequestProperty("X-Client-Signature", identity.signMessage(canonical));
         }
         if (body != null) {
             c.setRequestMethod("POST"); c.setDoOutput(true);
             c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
-            c.setFixedLengthStreamingMode(bytes.length);
-            try (OutputStream output = c.getOutputStream()) { output.write(bytes); }
+            c.setFixedLengthStreamingMode(bodyBytes.length);
+            try (OutputStream output = c.getOutputStream()) { output.write(bodyBytes); }
         }
         return c;
     }
