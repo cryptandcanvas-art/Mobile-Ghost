@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 
 /** Transport only. Schema and authentication must be confirmed with the service owner. */
 final class ApiClient {
+    private static final String CHALLENGE_ROUTE = "/api/v1/auth/challenge";
     private final String base;
     private final DeviceIdentity identity;
     ApiClient(String base, DeviceIdentity identity) {
@@ -68,9 +69,9 @@ final class ApiClient {
         if (!route.startsWith("/") || route.contains("\n") || route.contains("\r")) throw new IllegalArgumentException("Invalid API route.");
         byte[] bodyBytes = body == null ? new byte[0] : body.toString().getBytes(StandardCharsets.UTF_8);
         JSONObject challenge = null;
-        if (!route.equals("/auth/challenge") && !route.equals("/api/challenge") && !route.equals("/api/pair")) {
+        if (!route.equals(CHALLENGE_ROUTE) && !route.equals("/auth/challenge") && !route.equals("/api/challenge") && !route.equals("/api/pair")) {
             if (identity == null) throw new IllegalStateException("Device identity unavailable.");
-            challenge = new JSONObject(request("/auth/challenge", null));
+            challenge = new JSONObject(request(CHALLENGE_ROUTE, null));
             if (!"GW_REQUEST_V2".equals(challenge.getString("protocol")) || !"ECDSA_P256_SHA256_P1363".equals(challenge.getString("algorithm")))
                 throw new IOException("Unsupported authentication protocol.");
         }
@@ -78,7 +79,7 @@ final class ApiClient {
         c.setInstanceFollowRedirects(false);
         c.setConnectTimeout(15000); c.setReadTimeout(30000);
         c.setRequestProperty("Accept", accept);
-        if (route.equals("/auth/challenge")) {
+        if (route.equals(CHALLENGE_ROUTE) || route.equals("/auth/challenge")) {
             if (identity == null) throw new IllegalStateException("Device identity unavailable.");
             c.setRequestProperty("X-Key-ID", identity.fingerprint);
         }

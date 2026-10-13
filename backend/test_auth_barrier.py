@@ -150,5 +150,14 @@ class AuthTests(unittest.TestCase):
             bridge.INBOX_ENGINE.parse_and_ingest.assert_not_called()
             bridge.INBOX_ENGINE.commit.assert_not_called()
             bridge.INBOX_ENGINE.purge.assert_not_called()
+            for route in ('/auth/challenge', '/api/v1/auth/challenge'):
+                handler = bridge.MobileVaultHandler.__new__(bridge.MobileVaultHandler)
+                handler.command, handler.path, handler.client_address = 'GET', route, ('127.0.0.1', 1234)
+                handler.connection = Mock(spec=ssl.SSLSocket)
+                handler.headers = Message(); handler.headers['X-Key-ID'] = KEY_ID
+                handler._send_json = Mock()
+                handler.do_GET()
+                self.assertEqual(200, handler._send_json.call_args.args[0])
+                self.assertEqual('GW_REQUEST_V2', handler._send_json.call_args.args[1]['protocol'])
 
 if __name__ == '__main__': unittest.main()

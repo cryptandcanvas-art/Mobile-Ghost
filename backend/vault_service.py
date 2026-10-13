@@ -541,7 +541,7 @@ class MobileVaultHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(429, {"error": "THREAT_SHIELD_ACTIVE", "message": reason})
             return
 
-        if path == "/auth/challenge":
+        if path in ("/auth/challenge", "/api/v1/auth/challenge"):
             if not isinstance(self.connection, ssl.SSLSocket):
                 self._send_json(403, {"error": "TLS_REQUIRED"})
                 return

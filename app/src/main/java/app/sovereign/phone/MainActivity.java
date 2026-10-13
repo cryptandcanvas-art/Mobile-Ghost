@@ -23,8 +23,8 @@ public final class MainActivity extends Activity {
         layout = new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(24, 48, 24, 32); layout.setBackgroundColor(Color.rgb(5, 11, 12));
         scroll.addView(layout); setContentView(scroll);
-        label("GHOSTWOLF SYSTEM", 13);
-        label("GRIM", 38);
+        label("GHOSTWOLF SYSTEM / GRIM", 13);
+        label("Little Omega Ω", 38);
         label("ACTION STREAM", 20);
         label("Connect your service to load live actions", 14);
         endpoint = field("HTTPS service URL", false);
