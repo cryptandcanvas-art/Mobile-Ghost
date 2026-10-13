@@ -20,6 +20,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
       - name: Install Android build packages
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Check defense policy
@@ -43,3 +46,4 @@ jobs:
           path: app/build/reports/lint-results-debug.*
           if-no-files-found: ignore
           retention-days: 7
+
